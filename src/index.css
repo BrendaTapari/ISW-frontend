@@ -1,0 +1,124 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,560;9..144,700&family=Outfit:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: light --default, dark;
+}
+
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: oklch(98.2% 0.012 105);
+  --color-base-200: oklch(95% 0.025 135);
+  --color-base-300: oklch(89% 0.04 145);
+  --color-base-content: oklch(27% 0.04 155);
+  --color-primary: oklch(40% 0.09 155);
+  --color-primary-content: oklch(97% 0.015 110);
+  --color-secondary: oklch(58% 0.11 65);
+  --color-secondary-content: oklch(98% 0.01 80);
+  --color-accent: oklch(62% 0.1 145);
+  --color-accent-content: oklch(22% 0.04 155);
+  --color-neutral: oklch(27% 0.04 155);
+  --color-neutral-content: oklch(96% 0.015 120);
+  --color-info: oklch(62% 0.08 210);
+  --color-info-content: oklch(98% 0.01 210);
+  --color-success: oklch(52% 0.12 155);
+  --color-success-content: oklch(97% 0.02 140);
+  --color-warning: oklch(75% 0.13 75);
+  --color-warning-content: oklch(28% 0.05 70);
+  --color-error: oklch(55% 0.16 30);
+  --color-error-content: oklch(98% 0.01 30);
+  --radius-selector: 1.25rem;
+  --radius-field: 1.4rem;
+  --radius-box: 1.75rem;
+}
+
+@plugin "daisyui/theme" {
+  name: "dark";
+  prefersdark: false;
+  color-scheme: dark;
+  --color-base-100: oklch(24% 0.03 160);
+  --color-base-200: oklch(20% 0.025 160);
+  --color-base-300: oklch(30% 0.03 155);
+  --color-base-content: oklch(94% 0.02 130);
+  --color-primary: oklch(74% 0.11 150);
+  --color-primary-content: oklch(20% 0.04 155);
+  --color-secondary: oklch(72% 0.1 70);
+  --color-secondary-content: oklch(22% 0.04 70);
+  --color-accent: oklch(70% 0.09 155);
+  --color-accent-content: oklch(18% 0.03 155);
+  --color-neutral: oklch(18% 0.03 160);
+  --color-neutral-content: oklch(94% 0.02 130);
+  --color-info: oklch(70% 0.08 210);
+  --color-info-content: oklch(18% 0.03 210);
+  --color-success: oklch(70% 0.12 155);
+  --color-success-content: oklch(18% 0.04 155);
+  --color-warning: oklch(80% 0.12 80);
+  --color-warning-content: oklch(24% 0.05 70);
+  --color-error: oklch(70% 0.14 30);
+  --color-error-content: oklch(18% 0.04 30);
+  --radius-selector: 1.25rem;
+  --radius-field: 1.4rem;
+  --radius-box: 1.75rem;
+}
+
+@theme {
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.eco-app {
+  background:
+    radial-gradient(120% 42% at 50% -8%, color-mix(in oklch, var(--color-primary) 22%, transparent), transparent 62%),
+    var(--color-base-200);
+}
+
+.park-calendar.rdp-root {
+  --rdp-accent-color: var(--color-primary);
+  --rdp-accent-background-color: color-mix(in oklch, var(--color-primary) 16%, transparent);
+  --rdp-today-color: var(--color-primary);
+  --rdp-disabled-opacity: 0.32;
+  --rdp-day-width: 2.55rem;
+  --rdp-day-height: 2.55rem;
+  --rdp-day_button-width: 2.4rem;
+  --rdp-day_button-height: 2.4rem;
+  --rdp-nav_button-width: 2.5rem;
+  --rdp-nav_button-height: 2.5rem;
+  margin-inline: auto;
+  color: var(--color-base-content);
+}
+
+.park-calendar .rdp-caption_label {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.park-calendar .rdp-selected .rdp-day_button {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  border-color: transparent;
+}
+
+.people-sky {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklch, var(--color-info) 30%, var(--color-base-100)),
+    var(--color-base-200)
+  );
+}
+
+.park-calendar-invalid {
+  outline: 2px solid var(--color-error);
+  outline-offset: 4px;
+  border-radius: 1.25rem;
+}
