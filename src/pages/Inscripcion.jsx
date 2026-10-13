@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useSearchParams } from 'wouter'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { Check, Minus, Plus } from 'lucide-react'
+import { Check, Minus, Plus, Trash2 } from 'lucide-react'
 import { ApiError, createInscription, useActivities, usePark, useSlots } from '../api/index.js'
 import {
   AGE_MAX,
@@ -11,8 +11,10 @@ import {
   errorList,
   formatDate,
   formatDayMonth,
+  pruneErrors,
   sanitizeDigits,
   sanitizeName,
+  slotCapacity,
   slotLabel,
   slotProblem,
   todayDate,
@@ -46,9 +48,17 @@ const STEP_COPY = [
   },
 ]
 
-function FieldError({ message }) {
+function FieldError({ message, className = '' }) {
   if (!message) return null
-  return <p className="text-error text-sm">{message}</p>
+  return <p className={`text-error text-sm ${className}`}>{message}</p>
+}
+
+function RequiredMark() {
+  return (
+    <span className="text-error" aria-hidden="true">
+      {' *'}
+    </span>
+  )
 }
 
 function emptyForm() {
@@ -124,7 +134,8 @@ export default function Inscripcion() {
   const holidayYears = useMemo(() => yearsForMonth(calendarMonth), [calendarMonth])
   const { holidays, holidaySet, status: holidayStatus, retry: retryHolidays } = useHolidays(holidayYears)
   const { slots, status: slotsStatus, retry: retrySlots } = useSlots(activity?.id, form.date)
-  const maxPeople = park?.maxPeople ?? 10
+  // El tope de personas es el cupo del horario elegido. Sin horario todavía, no hay tope.
+  const peopleLimit = slotCapacity(slots, form.time)
   const closedWeekdays = park?.closedWeekdays ?? [1]
   const clothingSizes = park?.clothingSizes ?? []
   const rules = useMemo(
@@ -136,9 +147,8 @@ export default function Inscripcion() {
       slotsReady: !form.date || slotsStatus === 'ready',
       slotsError: slotsStatus === 'error',
       closedWeekdays,
-      maxPeople,
     }),
-    [closedWeekdays, form.date, holidaySet, holidayStatus, maxPeople, slots, slotsStatus],
+    [closedWeekdays, form.date, holidaySet, holidayStatus, slots, slotsStatus],
   )
   const scheduleMessage =
     form.date && form.time && slotsStatus === 'ready'
@@ -159,30 +169,42 @@ export default function Inscripcion() {
     window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' })
   }
 
+  // Aplica el cambio y saca los errores ya mostrados que el cambio corrigió.
+  function changeForm(next, fields, shiftErrors = (shown) => shown) {
+    setForm(next)
+    setErrors((shown) => pruneErrors(shiftErrors(shown), validateInscription(next, activity, rules), fields))
+  }
+
   function updateVisitor(index, field, value) {
-    setForm((current) => {
-      const visitors = current.visitors.map((visitor, visitorIndex) =>
-        visitorIndex === index ? { ...visitor, [field]: value } : visitor,
-      )
-      return { ...current, visitors }
-    })
+    const visitors = form.visitors.map((visitor, visitorIndex) =>
+      visitorIndex === index ? { ...visitor, [field]: value } : visitor,
+    )
+    changeForm({ ...form, visitors }, ['visitors'])
   }
 
   function updatePeople(value) {
-    setForm((current) => {
-      let next = value
-      let count = Number(next)
-      if (Number.isInteger(count) && count > maxPeople) {
-        count = maxPeople
-        next = String(maxPeople)
-      }
-      const visitors = [...current.visitors]
-      if (Number.isInteger(count) && count > 0) {
-        while (visitors.length < count) visitors.push(emptyVisitor())
-        visitors.length = count
-      }
-      return { ...current, people: next, visitors }
-    })
+    let next = value
+    let count = Number(next)
+    // Si el grupo ya supera el cupo (cambió el horario), se puede bajar pero no subir.
+    const ceiling = Math.max(peopleLimit ?? Infinity, form.visitors.length)
+    if (Number.isInteger(count) && count > ceiling) {
+      count = ceiling
+      next = String(ceiling)
+    }
+    const visitors = [...form.visitors]
+    if (Number.isInteger(count) && count > 0) {
+      while (visitors.length < count) visitors.push(emptyVisitor())
+      visitors.length = count
+    }
+    changeForm({ ...form, people: next, visitors }, ['people', 'schedule', 'visitors'])
+  }
+
+  function removeVisitor(index) {
+    const keep = (_, visitorIndex) => visitorIndex !== index
+    const visitors = form.visitors.filter(keep)
+    changeForm({ ...form, people: String(visitors.length), visitors }, ['people', 'schedule', 'visitors'], (shown) =>
+      shown.visitors ? { ...shown, visitors: shown.visitors.filter(keep) } : shown,
+    )
   }
 
   function goTo(next) {
@@ -284,6 +306,7 @@ export default function Inscripcion() {
     setDirection(1)
     setStep(0)
     setFurthest(0)
+    scrollTop()
   }
 
   const setDock = useSetDock()
@@ -333,6 +356,7 @@ export default function Inscripcion() {
   const people = Number(form.people)
   const visitorCount = Number.isInteger(people) && people > 0 ? people : 0
   const capacityWarning = scheduleMessage && /cupos/i.test(scheduleMessage) ? scheduleMessage : null
+  const atPeopleLimit = peopleLimit !== null && visitorCount >= peopleLimit
 
   return (
     <form className="space-y-4 [&_input]:text-base [&_select]:text-base" onSubmit={submit} noValidate>
@@ -451,8 +475,14 @@ export default function Inscripcion() {
             <section className="card bg-base-100 shadow-sm">
               <div className="card-body gap-4 p-4">
                 <PeopleSky count={visitorCount} />
+                <p className="text-base-content/60 text-sm">
+                  Los campos con <span className="text-error">*</span> son obligatorios.
+                </p>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="label-text">Cantidad de personas</span>
+                  <span className="label-text">
+                    Cantidad de personas
+                    <RequiredMark />
+                  </span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -466,10 +496,11 @@ export default function Inscripcion() {
                     <input
                       type="number"
                       min="1"
-                      max={maxPeople}
+                      max={peopleLimit ?? undefined}
                       inputMode="numeric"
+                      required
                       aria-label="Cantidad de personas"
-                      className={`input input-bordered w-16 text-center ${errors.people ? 'input-error' : ''}`}
+                      className={`input input-bordered w-16 [appearance:textfield] text-center [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${errors.people ? 'input-error' : ''}`}
                       value={form.people}
                       onChange={(event) => updatePeople(event.target.value)}
                     />
@@ -477,23 +508,32 @@ export default function Inscripcion() {
                       type="button"
                       className="btn btn-circle btn-primary"
                       aria-label="Agregar una persona"
-                      disabled={visitorCount >= maxPeople}
+                      disabled={atPeopleLimit}
                       onClick={() => updatePeople(String(Math.max(visitorCount, 0) + 1))}
                     >
                       <Plus className="size-4" />
                     </button>
                   </div>
                 </div>
+                {peopleLimit !== null ? (
+                  <p className="text-base-content/60 -mt-2 text-sm">
+                    Quedan {peopleLimit} lugares para las {form.time}.
+                  </p>
+                ) : null}
                 <FieldError message={errors.people} />
 
                 <label className="form-control w-full">
-                  <span className="label-text mb-1 block">Correo para la confirmación</span>
+                  <span className="label-text mb-1 block">
+                    Correo para la confirmación
+                    <RequiredMark />
+                  </span>
                   <input
                     type="email"
+                    required
                     className={`input input-bordered w-full ${errors.email ? 'input-error' : ''}`}
                     placeholder="nombre@correo.com"
                     value={form.email}
-                    onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                    onChange={(event) => changeForm({ ...form, email: event.target.value }, ['email'])}
                   />
                 </label>
                 <FieldError message={errors.email} />
@@ -509,11 +549,25 @@ export default function Inscripcion() {
                   const visitorErrors = errors.visitors?.[index] ?? {}
 
                   return (
-                    <fieldset key={index} className="rounded-box border-base-300 grid gap-3 border p-4">
+                    <fieldset key={index} className="rounded-box border-base-300 relative grid gap-3 border p-4">
                       <legend className="px-2 font-semibold">Persona {index + 1}</legend>
+                      {visitorCount > 1 ? (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm btn-circle text-error absolute top-1 right-2"
+                          aria-label={`Eliminar persona ${index + 1}`}
+                          onClick={() => removeVisitor(index)}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      ) : null}
                       <label className="form-control">
-                        <span className="label-text mb-1 block">Nombre y apellido</span>
+                        <span className="label-text mb-1 block">
+                          Nombre y apellido
+                          <RequiredMark />
+                        </span>
                         <input
+                          required
                           className={`input input-bordered w-full ${visitorErrors.nombre ? 'input-error' : ''}`}
                           maxLength={NAME_MAX}
                           autoComplete="name"
@@ -524,9 +578,13 @@ export default function Inscripcion() {
                       </label>
                       <div className="grid grid-cols-3 gap-3">
                         <label className="form-control col-span-2 min-w-0">
-                          <span className="label-text mb-1 block">DNI</span>
+                          <span className="label-text mb-1 block">
+                            DNI
+                            <RequiredMark />
+                          </span>
                           <input
                             type="text"
+                            required
                             inputMode="numeric"
                             autoComplete="off"
                             maxLength={DNI_MAX}
@@ -539,9 +597,13 @@ export default function Inscripcion() {
                           <FieldError message={visitorErrors.dni} />
                         </label>
                         <label className="form-control col-span-1 min-w-0">
-                          <span className="label-text mb-1 block">Edad</span>
+                          <span className="label-text mb-1 block">
+                            Edad
+                            <RequiredMark />
+                          </span>
                           <input
                             type="text"
+                            required
                             inputMode="numeric"
                             autoComplete="off"
                             maxLength={AGE_MAX}
@@ -556,8 +618,12 @@ export default function Inscripcion() {
                       </div>
                       {activity?.requiresSize ? (
                         <label className="form-control w-full">
-                          <span className="label-text mb-1 block">Talle de vestimenta</span>
+                          <span className="label-text mb-1 block">
+                            Talle de vestimenta
+                            <RequiredMark />
+                          </span>
                           <select
+                            required
                             className={`select select-bordered w-full ${visitorErrors.talle ? 'select-error' : ''}`}
                             value={visitor.talle}
                             onChange={(event) => updateVisitor(index, 'talle', event.target.value)}
@@ -575,6 +641,16 @@ export default function Inscripcion() {
                     </fieldset>
                   )
                 })}
+
+                <button
+                  type="button"
+                  className="btn btn-dash btn-primary btn-block"
+                  disabled={atPeopleLimit}
+                  onClick={() => updatePeople(String(Math.max(visitorCount, 0) + 1))}
+                >
+                  <Plus className="size-4" />
+                  Añadir visitante
+                </button>
               </div>
             </section>
           ) : null}
@@ -617,18 +693,16 @@ export default function Inscripcion() {
                   <h2 className="mb-1 font-semibold">Términos y condiciones</h2>
                   <p>{activity.terms}</p>
                 </div>
-                <label className="flex items-start gap-3">
+                <label className="block text-center">
                   <input
                     type="checkbox"
-                    className="checkbox checkbox-primary mt-1"
+                    className="checkbox checkbox-primary mr-3 align-middle"
                     checked={form.acceptedTerms}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, acceptedTerms: event.target.checked }))
-                    }
+                    onChange={(event) => changeForm({ ...form, acceptedTerms: event.target.checked }, ['terms'])}
                   />
-                  <span>Acepto los términos y condiciones de la actividad.</span>
+                  <span className="align-middle">Acepto los términos y condiciones de la actividad.</span>
                 </label>
-                <FieldError message={errors.terms} />
+                <FieldError message={errors.terms} className="text-center" />
               </div>
             </section>
           ) : null}

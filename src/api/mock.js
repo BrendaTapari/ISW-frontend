@@ -117,7 +117,6 @@ async function createInscription(body) {
     slots,
     slotsReady: true,
     closedWeekdays: db.park.closedWeekdays,
-    maxPeople: db.park.maxPeople,
   })
 
   if (Object.keys(errors).length > 0) {

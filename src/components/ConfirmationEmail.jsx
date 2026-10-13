@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
+import { Link } from 'wouter'
 import { motion, useReducedMotion } from 'motion/react'
 import { Mail } from 'lucide-react'
 import { usePark } from '../api/index.js'
@@ -93,7 +94,7 @@ export default function ConfirmationEmail({ registration, onReset }) {
             ))}
           </ul>
 
-          <div className="flex flex-col items-start gap-2">
+          <div className="flex flex-col items-center gap-2">
             <h2 className="font-semibold">Código QR</h2>
             {qr ? (
               <motion.img
@@ -112,9 +113,14 @@ export default function ConfirmationEmail({ registration, onReset }) {
         </div>
       </article>
 
-      <button type="button" className="btn btn-outline btn-block" onClick={onReset}>
-        Nueva inscripción
-      </button>
+      <div className="grid gap-2">
+        <button type="button" className="btn btn-primary btn-block" onClick={onReset}>
+          Nueva inscripción
+        </button>
+        <Link href="/" className="btn btn-outline btn-block">
+          Volver al inicio
+        </Link>
+      </div>
     </motion.section>
   )
 }

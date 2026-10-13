@@ -77,6 +77,11 @@ export function formatDate(dateStr) {
   })
 }
 
+export function slotCapacity(slots, time) {
+  const slot = (slots ?? []).find((item) => item.time === time)
+  return slot ? slot.capacity : null
+}
+
 export function slotProblem(slots, date, time, people, holidays, closedWeekdays = [1]) {
   if (!date || !time) return null
 
@@ -110,7 +115,6 @@ export function validateInscription(form, activity, options = {}) {
   const errors = {}
   const holidays = options.holidays ?? null
   const closedWeekdays = options.closedWeekdays ?? [1]
-  const maxPeople = options.maxPeople ?? 10
 
   if (!activity) errors.activity = 'Seleccioná una actividad.'
 
@@ -140,8 +144,8 @@ export function validateInscription(form, activity, options = {}) {
   }
 
   const people = Number(form.people)
-  if (form.people === '' || !Number.isInteger(people) || people < 1 || people > maxPeople) {
-    errors.people = `Podés inscribir entre 1 y ${maxPeople} personas.`
+  if (form.people === '' || !Number.isInteger(people) || people < 1) {
+    errors.people = 'Inscribí al menos 1 persona.'
   }
 
   const email = form.email.trim()
@@ -213,7 +217,19 @@ export function validateStep(step, form, activity, options) {
     const errors = {}
     if (all.date) errors.date = all.date
     if (all.time) errors.time = all.time
-    if (all.schedule) errors.schedule = all.schedule
+    // Si el horario tiene lugar pero no alcanza para el grupo, se corrige en el paso
+    // de visitantes. Acá solo frena un horario donde no entra nadie.
+    if (all.schedule) {
+      const schedule = slotProblem(
+        options.slots,
+        form.date,
+        form.time,
+        1,
+        options.holidays,
+        options.closedWeekdays,
+      )
+      if (schedule) errors.schedule = schedule
+    }
     return errors
   }
 
@@ -227,6 +243,32 @@ export function validateStep(step, form, activity, options) {
   }
 
   return all
+}
+
+// Deja solo los errores ya mostrados que siguen vigentes, con el mensaje actual.
+// No suma errores nuevos: esos aparecen recién al intentar avanzar.
+export function pruneErrors(shown, current, fields) {
+  const next = { ...shown }
+  for (const field of fields) {
+    if (!next[field]) continue
+    if (field === 'visitors') {
+      const visitors = next.visitors.map((item, index) => {
+        const live = current.visitors?.[index] ?? {}
+        return Object.fromEntries(
+          Object.keys(item)
+            .filter((key) => live[key])
+            .map((key) => [key, live[key]]),
+        )
+      })
+      if (visitors.some((item) => Object.keys(item).length > 0)) next.visitors = visitors
+      else delete next.visitors
+    } else if (current[field]) {
+      next[field] = current[field]
+    } else {
+      delete next[field]
+    }
+  }
+  return next
 }
 
 export function errorList(errors) {

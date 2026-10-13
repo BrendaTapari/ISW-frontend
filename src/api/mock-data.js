@@ -9,7 +9,6 @@ function onDays(days, slots) {
 export const parkRecord = {
   name: 'EcoHarmony Park',
   closedWeekdays: [1],
-  maxPeople: 10,
   clothingSizes: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
   slides: [
     {
