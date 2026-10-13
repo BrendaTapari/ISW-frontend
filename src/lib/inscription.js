@@ -17,8 +17,12 @@ export function sanitizeDigits(value, max) {
   return value.replace(/\D/g, '').slice(0, max)
 }
 
+// El id solo identifica la ficha (y su monigote) en pantalla; no viaja en la inscripción.
+let visitorSeq = 0
+
 export function emptyVisitor() {
-  return { nombre: '', dni: '', edad: '', talle: '' }
+  visitorSeq += 1
+  return { id: visitorSeq, nombre: '', dni: '', edad: '', talle: '' }
 }
 
 export function todayISO() {

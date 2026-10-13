@@ -474,7 +474,7 @@ export default function Inscripcion() {
           {step === 1 ? (
             <section className="card bg-base-100 shadow-sm">
               <div className="card-body gap-4 p-4">
-                <PeopleSky count={visitorCount} />
+                <PeopleSky ids={form.visitors.slice(0, visitorCount).map((visitor) => visitor.id)} />
                 <p className="text-base-content/60 text-sm">
                   Los campos con <span className="text-error">*</span> son obligatorios.
                 </p>
@@ -549,7 +549,7 @@ export default function Inscripcion() {
                   const visitorErrors = errors.visitors?.[index] ?? {}
 
                   return (
-                    <fieldset key={index} className="rounded-box border-base-300 relative grid gap-3 border p-4">
+                    <fieldset key={visitor.id} className="rounded-box border-base-300 relative grid gap-3 border p-4">
                       <legend className="px-2 font-semibold">Persona {index + 1}</legend>
                       {visitorCount > 1 ? (
                         <button
